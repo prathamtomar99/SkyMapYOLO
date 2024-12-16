@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map with Points</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 100%;
+            width: 80%;
+            margin-left: 10px;
+            border: 2p solid black;
+            border-radius:3%;
+        }
+        #container{
+            height: 568px;
+            display: flex;
+            width: 100%;
+        }
+        #warning{
+            margin-left: 20px;
+            margin-right: 10px;
+            height: 80%;
+            width: 17%;
+        }
+        #war{
+            height: 20%;
+            width: 100%;
+        }
+        #normal{
+            width: 100%;
+        }
+        #normal img{
+            width: 100%;
+        }
+        #det{
+            width: 100%;
+        }
+        #det img{
+            width: 100%;
+        }
+        #seg{
+            width: 100%;
+        }
+        #seg img{
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="map"></div>
+        <div id="warning">
+            <div id="war"></div>
+            <div id="normal"></div>
+            <div id="det"></div>
+            <div id="seg"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Wait until the Leaflet script is loaded before initializing the map
+        document.addEventListener('DOMContentLoaded', function() {
+            var coordsString = localStorage.getItem('coords');
+            var coordsArray = JSON.parse(coordsString);
+            let firstElement = coordsArray.length > 0 ? [parseFloat(coordsArray[0].split(",")[0]), parseFloat(coordsArray[0].split(",")[1])] : [18.5204, 73.8567];
+            console.log(firstElement);
+
+            var map = L.map('map').setView(firstElement, 18);  // Initialize the map
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19
+            }).addTo(map);
+
+            const normalIcon = L.icon({
+                iconUrl: "{{ url_for('static', filename='p.png') }}", 
+                iconSize: [25, 41],                  // Normal size [width, height]
+                iconAnchor: [12, 41],                // Point of the icon which will correspond to marker's location
+                popupAnchor: [1, -34]
+            });
+
+            const largeIcon = L.icon({
+                iconUrl: "{{ url_for('static', filename='p1.png') }}",
+                iconSize: [40, 62],                  // Enlarged size [width, height]
+                iconAnchor: [20, 62],                // Adjust anchor for the larger size
+                popupAnchor: [1, -34]
+            });
+
+            let lastClickedMarker = null;
+
+            if (coordsArray.length > 0) {
+                coordsArray.forEach((coord, index) => {
+                    const marker = L.marker([parseFloat(coord.split(",")[0]), parseFloat(coord.split(",")[1])], { icon: normalIcon }).addTo(map);
+
+                    marker.on('click', () => {
+                        if (lastClickedMarker && lastClickedMarker !== marker) {
+                            lastClickedMarker.setIcon(normalIcon);  // Reset the previous marker to normal size
+                        }
+
+                        if (marker.getIcon() === normalIcon) {
+                            marker.setIcon(largeIcon);  // Enlarge the clicked marker
+                            lastClickedMarker = marker;
+                        } else {
+                            marker.setIcon(normalIcon);  // Reset the clicked marker if it's already large
+                            lastClickedMarker = null;
+                        }
+
+                        performTask(coord, index);
+                    });
+                });
+            }
+
+            function performTask(coord, index) {
+                const baseUrl = "{{ url_for('static', filename='images/original/') }}";
+                const normal = document.getElementById('normal');
+                normal.innerHTML = `<img src="${baseUrl}${index}.jpg" alt="Displayed Image">`;
+                const baseUrl_det = "{{ url_for('static', filename='images/bounding/') }}";
+                const det = document.getElementById('det');
+                det.innerHTML = `<img src="${baseUrl_det}${index}.jpg" alt="Displayed Image">`;
+                const baseUrl_seg = "{{ url_for('static', filename='images/segmentation/') }}";
+                const seg = document.getElementById('seg');
+                seg.innerHTML = `<img src="${baseUrl_seg}${index}.jpg" alt="Displayed Image">`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drone Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 25px;
+            font-weight: bold;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #00aaff;
+            border-bottom: 2px solid #00aaff;
+        }
+
+        .main-container {
+            display: flex;
+            height: 80vh;
+            padding: 20px;
+        }
+
+        .video-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            width: 69%;
+            padding: 1px;
+            box-sizing: border-box;
+            padding-left: 20px;
+        }
+
+        .video-panel {
+            background-color: rgba(128, 128, 128, 0.2);
+            border: 1px solid #00aaff;
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            padding: 10px;
+            align-items: center;
+            position: relative;
+            transition: transform 0.05s ease, width 0.05s ease;
+            cursor: pointer;
+        }
+
+        .video-panel img {
+            width: 80%;
+            height: auto;
+            border-radius: 10px;
+            object-fit: fill;
+        }
+
+        .video-panel.expanded {
+            transform: scale(1.8);
+            z-index: 1000;
+        }
+
+        .video-panel.expanded.zero {
+            top: 52%;
+            left: 50%;
+        }
+        .video-panel.expanded.one {
+            top: 52%;
+            left: -50%;
+        }
+        .video-panel.expanded.two {
+            bottom: 50%;
+            left: 50%;
+        }
+        .video-panel.expanded.three {
+            bottom: 50%;
+            left: -50%;
+        }
+
+        .count-display {
+            font-size: 20px;
+            color: #00aaff;
+            margin-bottom: 10px;
+        }
+
+        .sidebar {
+            width: 28%;
+            height: 98%;
+            background-color: rgba(128, 128, 128, 0.2);
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            margin-left: 20px;
+        }
+
+        .warning-header {
+            height: 50%;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00aaff;
+            text-align: center;
+            padding-bottom: 5px;
+            position: relative;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .warning-content {
+            font-size: 16px;
+            color: #ff6666;
+            overflow-y: auto;
+            height: 87%;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .warning-header.expanded{
+            transform: scale(2);
+            z-index: 1000;
+            top: 21%;
+            left: -176%;
+            background-color: black;
+            font-size: 17px;
+        }
+
+        .warning.expanded{
+            font-size: 10px;
+            padding: 5px;
+        }
+
+        .warning-content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .warning-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .warning-content::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 10px;
+            border: 3px solid #f1f1f1;
+        }
+
+        .warning {
+            overflow-y: auto;
+            border: 2px solid #ff6666;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background-color: rgba(255, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        .war{
+            padding-bottom: 2px;
+            cursor: pointer;
+        }
+        #mapContainer {
+            height: 45%;
+            width: 100%;
+            /* border: 1px solid #ccc; */
+            margin-top: 15px;
+        }
+
+        #map {
+            position: relative;
+            transition: transform 0.05s ease, width 0.05s ease;
+            height: 100%;
+            width: 100%;
+        }
+        .mapp{
+            border-radius: 10px;
+        }
+        .mapp.expanded{
+            transform: scale(2);
+            z-index: 1000;
+        }
+        .four{
+            right: 100%;
+        }
+        .five{
+            right: 183%;
+            top: -54%;
+        }
+        #showOnMap {
+            width: 22px;
+            height: 22px;
+            display: flex;
+            background-color: transparent;
+            border: none;
+            position: relative;
+            cursor: pointer;
+        }
+        #showOnMap img{
+            width: 100%;
+            height: 100%;
+            left: 1437%;
+            z-index: 10000;
+            position: absolute;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <!-- Top section for welcome message and minimum count display -->
+        <div class="top">
+            <div>WELCOME TO DRONE MANIA</div>
+            <div id="min_count">Minimum Count: 0</div>
+        </div>
+
+        <div class="main-container">
+            <div class="video-section">
+                <div class="video-panel" onclick="expandImage(this)">
+                    <div class="count-display">Original Video</div>
+                    <img src="{{ url_for('video_feed', version='original') }}"
+                        alt="{{ url_for('static', filename='drone.png') }}">
+                </div>
+
+                <div class="video-panel" onclick="expandImage(this)">
+                    <div id="count_processed_1" class="count-display">Human Detection Count: 0</div>
+                    <img src="{{ url_for('video_feed', version='processed_1') }}"
+                        alt="{{ url_for('static', filename='drone.png') }}">
+                </div>
+
+                <div class="video-panel" onclick="expandImage(this)">
+                    <div id="count_processed_2" class="count-display">Human Segmentation Count: 0</div>
+                    <img src="{{ url_for('video_feed', version='processed_2') }}"
+                        alt="{{ url_for('static', filename='drone.png') }}">
+                </div>
+
+                <div class="video-panel" onclick="expandImage(this)">
+                    <div class="count-display">Thermal Video</div>
+                    <img src="{{ url_for('video_feed', version='processed_3') }}"
+                        alt="{{ url_for('static', filename='drone.png') }}">
+                </div>
+            </div>
+            <div class="sidebar">
+                <div id="warningexp" class="warning-header">
+                    <div class="war">Warning</div>
+                    <div id="warning" class="warning-content">
+                        <!-- <div class="warning" data-coords="18.464621,73.86811">Count :9 lat:18.464621 long : 73.86811 </div>
+                        <div class="warning" data-coords="18.464621,73.86811">Count :9 lat:18.464621 long : 73.86811 </div>
+                        <div class="warning" data-coords="18.464621,73.86811">Count :9 lat:18.464621 long : 73.86811 </div>
+                        <div class="warning" data-coords="18.464621,73.86821">Count :9 lat:18.464621 long : 73.86811 </div> -->
+                    </div>
+                </div>
+                <div id="mapContainer">
+                    <div class="mapp" id="map" onmousedown="startDrag(event)" onmouseup="endDrag(event)" onclick="expandImage(this)">
+                        <button id="showOnMap">
+                            <img id="showOnMapImg" src="{{ url_for('static', filename='search.png') }}" alt="Show">
+                        </button>   
+                    </div>     
+                </div>
+                <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+                <script>
+                    let autoScroll=true
+                    function scrollToBottom() {
+                        if(autoScroll){
+                            var warningContainer = document.getElementById('warning');
+                            warningContainer.scrollTop = warningContainer.scrollHeight;
+                        }
+                    }
+                    const map = L.map('map');
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                    const customIcon = L.icon({
+                        iconUrl: "{{ url_for('static', filename='drone.png') }}", // Replace with the path to your custom image
+                        iconSize: [20, 20], // Size of the icon
+                        iconAnchor: [10, 10], // Point of the icon which will correspond to marker's location
+                        popupAnchor: [0, -38] // Point from which the popup should open relative to the iconAnchor
+                    });
+
+                    let marker;
+
+                    let isDragging = false;
+                    function startDrag(event) {
+                        isDragging = false;
+                        event.currentTarget.addEventListener('mousemove', checkDrag);
+                    }
+                    function checkDrag(event) {
+                        isDragging = true;
+                    }
+                    function endDrag(event) {
+                        event.currentTarget.removeEventListener('mousemove', checkDrag);
+                    }
+
+                    let currentlyExpanded = null;
+                    let latitu=null,longi=null;
+                    let map_expanded=false;
+                    elem = document.querySelectorAll('.warning-header');
+                    function expandImage(element) {
+                        if(element=== document.getElementById('map')){
+                            map_expanded= !map_expanded;
+                        }
+                        console.log(map_expanded);
+                        if (currentlyExpanded &&    !isDragging) {
+                            currentlyExpanded.classList.remove('expanded', 'zero','one','two','three','four','five');
+                            document.querySelectorAll('#warning .warning').forEach(function(element) {
+                                element.classList.remove('expanded');
+                            });
+                        } if (currentlyExpanded === element   && !isDragging) {
+                            currentlyExpanded = null;
+                            return;
+                        } if(!isDragging){
+                            element.classList.add('expanded');
+                            const videoPanels = document.querySelectorAll('.video-panel,.mapp');
+                            const index = Array.from(videoPanels).indexOf(element);
+                            if (index === 0 ) {
+                                element.classList.add('zero');
+                            } else if (index===1){
+                                element.classList.add('one');
+                            } else if (index===2){
+                                element.classList.add('two');
+                            } else if (index===3){
+                                element.classList.add('three');
+                            } else if (index===4){
+                                element.classList.add('five');
+                            }
+                            currentlyExpanded = element;
+                            console.log(currentlyExpanded);
+                        }
+                    }
+
+                    document.querySelector('.war').addEventListener('click', function() {
+                        autoScroll= !autoScroll;
+                        const warningContent = document.getElementById('warningexp');
+                        const cordsContent = document.querySelectorAll('.warning');
+                        if (currentlyExpanded) {
+                            currentlyExpanded.classList.remove('expanded', 'zero','one','two','three','four','five');
+                            document.querySelectorAll('.warning').forEach(function(element) {
+                                element.classList.remove('expanded');
+                            });
+                        } if(currentlyExpanded===elem[0]) {
+                            currentlyExpanded=null;
+                            return;
+                        }
+                        warningContent.classList.add('expanded');
+                        document.querySelectorAll('.warning').forEach(function(element) {
+                            element.classList.add('expanded');
+                        });
+                        currentlyExpanded=elem[0];
+                    });
+                    document.querySelectorAll('.warning').forEach(function(element) {
+                        element.addEventListener('click', function() {
+                            const coords = element.getAttribute('data-coords');
+                            console.log(coords);
+                            const [long, lat] = coords.split(',');
+                            const url = `https://www.google.com/maps?q=${lat},${long}`;
+                            window.open(url, '_blank');
+                        });
+                    });
+
+                    document.getElementById('showOnMapImg').addEventListener('click', function() {
+                        var warnings = document.querySelectorAll('#warning .warning');
+                        var coordsArray = [];
+                        warnings.forEach(function(warning) {
+                            var coords = warning.getAttribute('data-coords');
+                            coordsArray.push(coords);
+                        });
+                        var coordsString = JSON.stringify(coordsArray);
+                        // Use localStorage to pass data to the new page
+                        localStorage.setItem('coords', coordsString);
+                        console.log(coordsString);
+                        window.open("{{ url_for('map') }}", "_blank");
+                    },250);
+
+                    function fetchLocationCounts() {
+                        fetch('/get_counts')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data) {
+                                    console.log(data)
+                                    document.getElementById('count_processed_1').textContent = 'Bounding Box Count: ' + data.processed_1;
+                                    document.getElementById('count_processed_2').textContent = 'Segment Count: ' + data.processed_2;
+                                    document.getElementById('min_count').textContent = 'Minimum Count: ' + data.original;
+                                    if (data.original >= 3) {
+                                                const container = document.getElementById('warning')
+                                                const newDiv = document.createElement('div');
+                                                newDiv.classList.add('warning');
+                                                const coords = `${data.lat},${data.lng}`;
+                                                newDiv.setAttribute('data-coords', coords);   
+                                                latt=  Number(data.lat);
+                                                latt=latt.toFixed(4);
+                                                longg=Number(data.lng);
+                                                longg=longg.toFixed(4);
+                                                newDiv.innerHTML = `Count :${data.original} lat : ${latt} long:${longg}`;
+                                                newDiv.addEventListener('click', function() {
+                                                    const Url = `https://www.google.com/maps?q=${data.lat},${data.lng}`;
+                                                    window.open(Url, '_blank');
+                                                });
+                                                container.appendChild(newDiv);
+                                                if(!autoScroll){
+                                                    document.querySelectorAll('.warning').forEach(function(element) {
+                                                        element.classList.add('expanded');
+                                                    });
+                                                }
+                                                scrollToBottom(); 
+                                            }
+                                    }
+                                    const { lat, lng } = data; // Assume the API returns a JSON object with 'lat' and 'lng'
+                                    latitu=lat;longi=lng;
+                                    if (!marker) {
+                                        marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+                                        map.setView([lat, lng], 19);
+                                    } else {
+                                        if(map_expanded){
+                                            marker.setLatLng([lat, lng]);
+                                            map.setView([lat, lng]); // Keep map centered on the marker
+                                        }
+                                        else{
+                                            marker.setLatLng([lat, lng]);
+                                            map.setView([lat, lng],19); // Keep map centered on the marker
+                                        }
+                                    }
+                                })
+                            .catch(error => {
+                                console.error('Error fetching location:', error)
+                            });
+                    }
+                    setInterval(fetchLocationCounts, 500);
+                    fetchLocationCounts();
+                </script>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
